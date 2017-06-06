@@ -1,0 +1,4 @@
+*.conf
+*.csv
+*.zip
+__pycache__/
