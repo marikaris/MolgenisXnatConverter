@@ -1,6 +1,6 @@
 MolgenisXnatConverter
 =====================
-Proof of concept, only tested for one dataset
+**Proof of concept**, only tested for one dataset<br/>
 Based on: https://github.com/thehyve/xnat-QIB-TranSMART-import/tree/develop
 
 ### Before setup
