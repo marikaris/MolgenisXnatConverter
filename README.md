@@ -15,7 +15,8 @@ python setup.py install
 
 ### Configutation file example
 
-```[Connection]
+```
+[Connection]
 url = url of xnat data
 user = username
 password = password
