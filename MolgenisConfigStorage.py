@@ -6,6 +6,7 @@ elif sys.version_info.major == 2:
     import ConfigParser
 
 class MolgenisConfigStorage():
+    """This class retrieves the content of the provided config file and stores it"""
     def __init__(self, args):
         config_bool = False
         if args.__contains__("connection") and args.__dict__["connection"]:
@@ -37,7 +38,6 @@ class MolgenisConfigStorage():
         Returns:
             -config     Config      Parsed configuration file object.
         """
-
         try:
             file_test = open(file_, 'r')
             config = ConfigParser.SafeConfigParser()

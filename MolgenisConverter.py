@@ -58,7 +58,6 @@ class MolgenisConverter():
         concept_key_list = []
         data_header_list = []
         data_list = []
-        patient_map = {}
         for subject in project.subjects.values():
             data_row_dict = {}
             subject_obj = project.subjects[subject.label]
@@ -68,9 +67,7 @@ class MolgenisConverter():
                                                                                                  experiment,
                                                                                                  data_row_dict, subject,
                                                                                                  data_header_list,
-                                                                                                 concept_key_list,
-                                                                                                 patient_map, config,
-                                                                                                 project)
+                                                                                                 concept_key_list)
             if len(data_row_dict) > 0:
                 data_list.append(data_row_dict)
 
@@ -83,15 +80,12 @@ class MolgenisConverter():
                 return data_list
         return data_list, data_header_list
 
-    def retrieve_QIB(self, subject_obj, experiment, data_row_dict, subject, data_header_list, concept_key_list,
-                     patient_map, config, project):
+    def retrieve_QIB(self, subject_obj, experiment, data_row_dict, subject, data_header_list, concept_key_list):
         session = subject_obj.experiments[experiment.label]
-        begin_concept_key = self.write_project_metadata(session, config)
+        begin_concept_key = self.write_project_metadata(session)
 
-        if subject.label in patient_map:
-            data_row_dict['subject'] = patient_map[subject.label]
-        else:
-            data_row_dict['subject'] = subject.label
+
+        data_row_dict['subject'] = subject.label
         if 'subject' not in data_header_list:
             data_header_list.append('subject')
 
@@ -113,7 +107,7 @@ class MolgenisConverter():
 
         return data_header_list, data_row_dict, concept_key_list
 
-    def write_project_metadata(self, session, config):
+    def write_project_metadata(self, session):
         analysis_tool = getattr(session, "analysis_tool")
         analysis_tool_version = getattr(session, "analysis_tool_version")
         if analysis_tool and analysis_tool_version:
@@ -141,27 +135,6 @@ class MolgenisConverter():
             metadata["scanner"] = label_list[2]
 
         return metadata
-
-    def write_concept_tags(self, results, biomarker, concept_key, concept_key_list, session, metadata):
-        ontology_name = results.biomarkers[biomarker].ontology_name
-        ontology_IRI = results.biomarkers[biomarker].ontology_iri
-        lines = []
-        if concept_key not in concept_key_list:
-            weight = 1
-            lines.append('\t'.join([concept_key, "Ontology name", ontology_name]) + '\t' + str(weight) + '\n')
-            lines.append('\t'.join([concept_key, "Ontology IRI", ontology_IRI]) + '\t' + str(weight) + '\n')
-            weight = 2
-
-            for x in session.base_sessions.values():
-                lines.append('\t'.join([concept_key, "accession identifier", x.accession_identifier]) + "\t" + str(
-                    weight) + "\n")
-
-            for x in metadata:
-                lines.append('\t'.join([concept_key, x, metadata[x]]) + "\t" + str(weight) + "\n")
-
-            concept_key_list.append(concept_key)
-
-        return concept_key_list
 
     def write_data(self, data_file, data_list, data_headers):
         print('Write data to file\n')
