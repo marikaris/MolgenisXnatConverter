@@ -29,6 +29,9 @@ class MolgenisConverter():
         print("Exit.")
 
     def connect(self):
+        """FUNCTION: connect
+        PURPOSE: Making connection to the xnat server using xnatpy
+        OUT: project and connection"""
         print('Establishing connection\n')
         config = self.config
         try:
@@ -54,6 +57,12 @@ class MolgenisConverter():
                 return e, None
 
     def obtain_data(self, project, config):
+        """FUNCTION: obtain_data
+        IN: project; the project retrieved from the xnat server using the connect function
+            config; the configuration parameters provided in the conf file, parsed using MolgenigConfigStorage
+        PURPOSE: obtain the data from the project
+        OUT: data_list, a list of rows containing data
+             data_header_list, a list of all headers"""
         print('Obtaining data from XNAT\n')
         concept_key_list = []
         data_header_list = []
@@ -63,11 +72,8 @@ class MolgenisConverter():
             subject_obj = project.subjects[subject.label]
             for experiment in subject_obj.experiments.values():
                 if "qib" in experiment.label.lower() and experiment.project == config.project_name:
-                    projectdata_header_list, data_row_dict, concept_key_list = self.retrieve_QIB(subject_obj,
-                                                                                                 experiment,
-                                                                                                 data_row_dict, subject,
-                                                                                                 data_header_list,
-                                                                                                 concept_key_list)
+                    projectdata_header_list, data_row_dict = self.retrieve_data(subject_obj, experiment, data_row_dict,
+                                                                                subject, data_header_list)
             if len(data_row_dict) > 0:
                 data_list.append(data_row_dict)
 
@@ -80,10 +86,20 @@ class MolgenisConverter():
                 return data_list
         return data_list, data_header_list
 
-    def retrieve_QIB(self, subject_obj, experiment, data_row_dict, subject, data_header_list, concept_key_list):
+    def retrieve_data(self, subject_obj, experiment, data_row_dict, subject, data_header_list):
+        """FUNCTION: retrieve_data
+        IN: subject_obj; the object with subject information
+            experiment; the experiment object of the subject
+            data_row_dict; a dictionary that will contain all data of a row
+            subject; the data of the current subject
+            data_header; the label of the header we want to put in the row
+            data_header_list; list with all header labels
+        PURPOSE: retrieve data of a row
+        OUT: data_header_list; list with labels of all headers
+             data_row_dict; dictionary containing as key the column label and as value the value of that column for one
+                            row"""
         session = subject_obj.experiments[experiment.label]
         begin_concept_key = self.write_project_metadata(session)
-
 
         data_row_dict['subject'] = subject.label
         if 'subject' not in data_header_list:
@@ -105,7 +121,7 @@ class MolgenisConverter():
                 if concept_key not in data_header_list:
                     data_header_list.append(concept_key)
 
-        return data_header_list, data_row_dict, concept_key_list
+        return data_header_list, data_row_dict
 
     def write_project_metadata(self, session):
         analysis_tool = getattr(session, "analysis_tool")
@@ -119,6 +135,11 @@ class MolgenisConverter():
         return concept_key
 
     def get_session_data(self, subject_obj, label_list):
+        """FUNCTION: get_sesssion_data
+        IN: subject_obj; the object with subject information
+            label_list; a list of all information about the column
+        PURPOSE: get the metadata of the data on the server
+        OUT: metadata of the data on the xnat server"""
         metadata = {}
         # If the session cannot be found it uses a parsed version of the label to retrieve the needed information.
         try:
@@ -137,20 +158,28 @@ class MolgenisConverter():
         return metadata
 
     def write_data(self, data_file, data_list, data_headers):
+        """FUNCTION: write_data
+        IN: data_file; the opened file that will contain the data, the filename should be structured like
+                        package_entityTypeName.csv as we are used in molgenis
+            data_list; a list with dictionaries in this structure: [{column_label1: value1, column_label2: value2},
+                        {column_label1: value1, column_label2: value2}]
+            data_headers; a dictionary containing the data headers as key and their id's in the molgenis metadata as
+                            value
+        PURPOSE: write the data to the file in the right format"""
         print('Write data to file\n')
+        # Data headers is a dictionary, so we only need its keys, which are the labels of the column when loaded in
+        # molgenis. We want to make a row from it in csv format, so comma separated, ending with a blank line. We
+        # don't want the labels in the row, but the id's so we take the value of each key in the data_header dictionary
         data_file.write(",".join(['"' + data_headers[header] + '"' for header in data_headers.keys()]) + '\n')
-
         column_list = []
         rows = []
         subject_written = False
         for line in data_list:
             row = []
             i = 0
-
             while i < len(data_headers):
                 row.append(',')
                 i += 1
-
             for header in data_headers:
                 if header in line.keys():
                     info_piece = line[header]
@@ -160,7 +189,6 @@ class MolgenisConverter():
                         subject_written = True
                         column_list.append(header)
                     elif header not in column_list:
-                        data_label = header.split("\\")[-1]
                         column_list.append(header)
             row[-1] = row[-1].replace(',', '\n')
             data_file.write(''.join(row))
@@ -168,6 +196,12 @@ class MolgenisConverter():
         data_file.close()
 
     def write_meta_data(self, headers, package, entity_name):
+        """FUNCTION: write_meta_data
+        IN: headers; a dictionary with all headers and the column they should be in (headers could contain all kinds of
+            characters, so we use them as labels for all columns instead of id's)
+            package; the name of the package, we use project name for it
+            entity_name; the name of the table in molgenis, we use study id for it
+        PURPOSE: write the attributes, entities and packages file with the metadata for molgenis"""
         print('Write meta data to files\n')
         attribute_file = open("attributes.csv", "w")
         attribute_file.write('"entity","name","label","idAttribute"\n')
@@ -190,6 +224,8 @@ class MolgenisConverter():
         package_file.close()
 
     def zip_emx(self):
+        """FUNCTION: zip_emx
+        PURPOSE: zipping the data and metadata that should be uploaded to molgenis so it can be uploaded"""
         print('Creating zip file from data and meta data: molgenis_import.zip\n')
         emx = zipfile.ZipFile("molgenis_import.zip", "w", zipfile.ZIP_DEFLATED)
         emx.write("{}_{}.csv".format(self.config.project_name, self.config.study_id))
